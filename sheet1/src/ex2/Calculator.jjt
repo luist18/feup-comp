@@ -4,7 +4,13 @@ options {
 
 PARSER_BEGIN(Calculator)
 package ex2;
+
+import java.util.HashMap;
+
 public class Calculator {
+
+    public static HashMap<String, Integer> variables = new HashMap<>();
+
     public static void main(String[] args) throws ParseException {
         System.out.println("Parser for a calculator that accepts expressions with integers, +,-,*,/,(, and ).");
         System.out.println("Write an arithmetic expression: ");
@@ -44,8 +50,15 @@ SKIP:
 
 TOKEN:
 {
-    < INTEGER: (["0"-"9"])+ >
-    | < LF: "\n" >
+    <INTEGER: (["0"-"9"])+>
+    | <SYMBOL: (["A"-"Z", "a"-"z"](["A"-"Z", "a"-"z", "0"-"9"])*)>
+    | <EQUALS: "=">
+    | <SEMI: ";">
+    | <ADD: "+">
+    | <SUB: "-">
+    | <MUL: "*">
+    | <DIV: "/">
+    | <LF: "\n">
 }
 
 SimpleNode Expression(): {}
@@ -53,9 +66,24 @@ SimpleNode Expression(): {}
     Expr1() <LF> {return jjtThis;} // Java code inside brackets
 }
 
+void SymbolDeclarations() #void: {}
+{
+
+}
+
+void SymbolDeclaration() #void: {Token variable, value;}
+{
+    variable=<SYMBOL> #Variable
+    <EQUALS>
+    value=<INTEGER> {
+        Calculator.variables.put(variable.image, Integer.parseInt(value.image));
+    } #Integer
+    <SEMI>
+}
+
 void Expr1() #void: {}
 {
-    Expr2(1) ("+" Expr2(1) #Add(2) | "-" Expr2(1) #Sub(2))?
+      Expr2(1) ("+" Expr2(1) #Add(2) | "-" Expr2(1) #Sub(2))?
 }
 
 void Expr2(int sign) #void: {}
@@ -65,7 +93,7 @@ void Expr2(int sign) #void: {}
 
 void Expr3(int sign) #void: {Token t;}
 {
-    t = <INTEGER> {jjtThis.val = sign * Integer.parseInt(t.image);} #Term
+    (t=<INTEGER> {jjtThis.val = sign * Integer.parseInt(t.image);} | t=<SYMBOL> {jjtThis.val = sign * Calculator.variables.get(t.image)})  #Term
     | "-" Expr3(-1)
     | "(" Expr1() ")"
 }

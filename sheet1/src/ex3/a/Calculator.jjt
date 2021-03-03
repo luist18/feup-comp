@@ -1,0 +1,123 @@
+options {
+ LOOKAHEAD = 2;
+}
+
+PARSER_BEGIN(Calculator)
+package ex3.a;
+
+import java.util.HashMap;
+import java.lang.Exception;
+
+public class Calculator {
+
+    public static HashMap<String, Integer> variables = new HashMap<String, Integer>();
+
+    public static void main(String[] args) throws ParseException {
+        System.out.println("Parser for a calculator that accepts expressions with integers, +,-,*,/,(, and ).");
+        System.out.println("Write an arithmetic expression: ");
+        Calculator myCalc = new Calculator(System.in);
+
+        try {
+            SimpleNode root = myCalc.Expression(); // returns reference to root node
+
+            root.dump(""); // prints the tree on the screen
+
+            int result = myCalc.eval(root);
+            System.out.println("Expression value: " + result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    int eval(SimpleNode node) throws Exception {
+        if (node.jjtGetNumChildren() == 0) // leaf node with integer value
+            return node.val;
+        else if (node.jjtGetNumChildren() == 1) // only one child
+            return this.eval((SimpleNode) node.jjtGetChild(0));
+
+        SimpleNode lhs = (SimpleNode) node.jjtGetChild(0); //left child
+        SimpleNode rhs = (SimpleNode) node.jjtGetChild(1); // right child
+        switch(node.id) {
+            case CalculatorTreeConstants.JJTSYMBOLDECLARATIONS:
+                return eval(rhs);
+            case CalculatorTreeConstants.JJTADD:
+                return eval(lhs) + eval(rhs);
+            case CalculatorTreeConstants.JJTSUB:
+                return eval(lhs) - eval(rhs);
+            case CalculatorTreeConstants.JJTMUL:
+                return eval(lhs) * eval(rhs);
+            case CalculatorTreeConstants.JJTDIV:
+                return eval(lhs) / eval(rhs);
+            default : // abort
+                System.out.println("Ilegal operator!");
+                System.exit(1);
+        }
+        return 0;
+    }
+}
+PARSER_END(Calculator)
+
+SKIP:
+{
+    " " | "\r" | "\t"
+}
+
+TOKEN:
+{
+    <INTEGER: (["0"-"9"])+>
+    | <SYMBOL: (["A"-"Z", "a"-"z"](["A"-"Z", "a"-"z", "0"-"9"])*)>
+    | <EQUALS: "=">
+    | <SEMI: ";">
+    | <ADD: "+">
+    | <SUB: "-">
+    | <MUL: "*">
+    | <DIV: "/">
+    | <LF: "\n">
+}
+
+SimpleNode Expression() throws Exception: {}
+{
+    SymbolDeclarations() <LF> {return jjtThis;} // Java code inside brackets
+}
+
+void SymbolDeclarations() throws Exception: {}
+{
+    (SymbolDeclaration())* Expr1() #Calculations
+}
+
+void SymbolDeclaration(): {Token variable, value;}
+{
+    variable=<SYMBOL> {
+        jjtThis.image = variable.image;
+    } #Variable
+    <EQUALS>
+    value=<INTEGER> {
+        jjtThis.val = Integer.parseInt(value.image);
+        Calculator.variables.put(variable.image, Integer.parseInt(value.image));
+    } #Integer
+    <SEMI>
+}
+
+void Expr1() throws Exception #void: {}
+{
+      Expr2(1) ("+" Expr2(1) #Add(2) | "-" Expr2(1) #Sub(2))? <SEMI>
+}
+
+void Expr2(int sign) throws Exception #void: {}
+{
+    Expr3(sign) ("*" Expr3(1) #Mul(2) | "/" Expr3(1) #Div(2))?
+}
+
+void Expr3(int sign) throws Exception #void : {Token t;}
+{
+    t=<INTEGER> {jjtThis.val = sign * Integer.parseInt(t.image);} #Term
+    | t=<SYMBOL> {
+        Integer value = Calculator.variables.get(t.image);
+        if (value == null)
+            throw new Exception("Variable " + t.image + " is not assigned");
+        jjtThis.val = sign * value;
+    }  #Term
+    | "-" Expr3(-1)
+    | "(" Expr1() ")"
+}

@@ -24,3 +24,13 @@ hs_err_pid*
 
 */.idea/
 *.iml
+
+**/ex2
+!**/ex2/Calculator.jjt
+!**/ex2/run.bat
+!**/ex2/SimpleNode.java
+
+**/ex3
+!**/ex3/**/Calculator.jjt
+!**/ex3/**/run.bat
+!**/ex3/**/SimpleNode.java
